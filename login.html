@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #eceff1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .box {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      width: 300px;
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h3>Login</h3>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <input id="chatWith" placeholder="Chat with (email)">
+
+  <button onclick="login()">Login</button>
+  <p id="msg"></p>
+</div>
+
+<script>
+async function login() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const chatWith = document.getElementById("chatWith").value.trim();
+
+  if (!email || !password || !chatWith) {
+    document.getElementById("msg").innerText =
+      "Email, password and chat partner required";
+    return;
+  }
+
+  const res = await fetch("https://private-chat-ftj0.onrender.com/login", {
+
+
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+
+  if (data.token) {
+    // ✅ SAVE EVERYTHING 
+    sessionStorage.setItem("token", data.token);
+    sessionStorage.setItem("email", email);
+    sessionStorage.setItem("chatWith", chatWith);
+
+    // ✅ GO TO CHAT
+    window.location.href = "chat.html";
+  } else {
+    document.getElementById("msg").innerText = data.message;
+  }
+}
+</script>
+
+
+
+</body>
+</html>
