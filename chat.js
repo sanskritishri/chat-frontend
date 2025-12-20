@@ -57,10 +57,18 @@ socket.on("private_message", msg => {
 
 // ===== TYPING =====
 input.addEventListener("input", () => {
-  socket.emit("typing", { to: chatWith });
+ socket.emit("typing", {
+  to: chatWith,
+  from: myEmail
+});
+
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
-    socket.emit("stop_typing", { to: chatWith });
+   socket.emit("stop_typing", {
+  to: chatWith,
+  from: myEmail
+});
+
   }, 800);
 });
 
@@ -99,7 +107,10 @@ function renderMessage(msg, isMe) {
   div.dataset.id = msg.id;
 
   div.innerHTML = `
-    <div class="text">${isMe ? msg.text : `<b>${msg.from}</b>: ${msg.text}`}</div>
+    <div class="text">
+  ${msg.text}
+</div>
+
     <span class="time">${msg.time}</span>
     ${isMe ? `
       <div class="actions">
@@ -209,3 +220,4 @@ function renderVoice(src, isMe) {
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
