@@ -1,6 +1,4 @@
-/***********************
- * AUTH & BASIC SETUP
- ***********************/
+// ================= AUTH =================
 const token = sessionStorage.getItem("token");
 const myEmail = sessionStorage.getItem("email");
 const chatWith = sessionStorage.getItem("chatWith");
@@ -8,16 +6,12 @@ const chatWith = sessionStorage.getItem("chatWith");
 if (!token || !chatWith) location.href = "login.html";
 document.getElementById("chatWith").innerText = chatWith;
 
-/***********************
- * SOCKET CONNECTION
- ***********************/
+// ================= SOCKET =================
 const socket = io("https://private-chat-ftj0.onrender.com", {
   auth: { token }
 });
 
-/***********************
- * DOM ELEMENTS
- ***********************/
+// ================= DOM =================
 const chatBox = document.getElementById("chatMessages");
 const input = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -32,13 +26,11 @@ const videoCallBtn = document.getElementById("videoCallBtn");
 const muteBtn = document.getElementById("muteBtn");
 const endCallBtn = document.getElementById("endCallBtn");
 
-const callScreen = document.getElementById("callScreen");
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
+const callScreen = document.getElementById("callScreen");
 
-/***********************
- * CHAT LOGIC
- ***********************/
+// ================= CHAT =================
 let selectedMessageId = null;
 let typingTimeout;
 
@@ -68,17 +60,16 @@ function sendMessage() {
 
 socket.on("private_message", msg => {
   renderMessage(msg, false);
+  socket.emit("seen", { id: msg.id, to: msg.from });
 });
 
-/***********************
- * TYPING INDICATOR
- ***********************/
+// ================= TYPING =================
 input.addEventListener("input", () => {
-  socket.emit("typing", { to: chatWith });
+  socket.emit("typing", { to: chatWith, from: myEmail });
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
     socket.emit("stop_typing", { to: chatWith });
-  }, 700);
+  }, 800);
 });
 
 socket.on("typing", () => {
@@ -90,9 +81,7 @@ socket.on("stop_typing", () => {
   typingDiv.style.display = "none";
 });
 
-/***********************
- * ONLINE / OFFLINE
- ***********************/
+// ================= STATUS =================
 socket.on("connect", () => {
   socket.emit("check_status", { email: chatWith });
 });
@@ -111,9 +100,7 @@ socket.on("user_status", data => {
   }
 });
 
-/***********************
- * RENDER MESSAGE
- ***********************/
+// ================= RENDER MESSAGE =================
 function renderMessage(msg, isMe) {
   const div = document.createElement("div");
   div.className = `message ${isMe ? "user" : "helper"}`;
@@ -129,7 +116,7 @@ function renderMessage(msg, isMe) {
       </div>` : ""}
   `;
 
-  // long press for emoji
+  // long press → emoji
   let timer;
   const start = () => {
     timer = setTimeout(() => {
@@ -150,9 +137,7 @@ function renderMessage(msg, isMe) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-/***********************
- * EDIT / DELETE
- ***********************/
+// ================= EDIT / DELETE =================
 function editMessage(id) {
   const newText = prompt("Edit message");
   if (!newText) return;
@@ -173,9 +158,7 @@ socket.on("delete_message", d => {
   document.querySelector(`[data-id='${d.id}']`)?.remove();
 });
 
-/***********************
- * EMOJI
- ***********************/
+// ================= EMOJI =================
 function sendReaction(emoji) {
   if (!selectedMessageId) return;
   const div = document.querySelector(`[data-id='${selectedMessageId}']`);
@@ -190,11 +173,9 @@ socket.on("reaction", d => {
   if (div) div.innerHTML += `<div class="reactions">${d.emoji}</div>`;
 });
 
-/***********************
- * CALLING (WEBRTC)
- ***********************/
-let peerConnection;
+// ================= CALLING (WEBRTC) =================
 let localStream;
+let peerConnection;
 let callType = "audio";
 let muted = false;
 
@@ -202,16 +183,26 @@ const servers = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
 };
 
-audioCallBtn.onclick = () => startCall("audio");
-videoCallBtn.onclick = () => startCall("video");
+audioCallBtn.addEventListener("click", () => {
+  callType = "audio";
+  startCall();
+});
 
-async function startCall(type) {
-  callType = type;
+videoCallBtn.addEventListener("click", () => {
+  callType = "video";
+  startCall();
+});
 
+async function startCall() {
   localStream = await navigator.mediaDevices.getUserMedia({
     audio: true,
-    video: type === "video"
+    video: callType === "video"
   });
+
+  if (callType === "video") {
+    callScreen.style.display = "block";
+    localVideo.srcObject = localStream;
+  }
 
   peerConnection = new RTCPeerConnection(servers);
 
@@ -220,22 +211,20 @@ async function startCall(type) {
   );
 
   peerConnection.ontrack = e => {
-    remoteVideo.srcObject = e.streams[0];
+    if (callType === "video") {
+      remoteVideo.srcObject = e.streams[0];
+    } else {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.play();
+    }
   };
 
   peerConnection.onicecandidate = e => {
     if (e.candidate) {
-      socket.emit("webrtc_ice", {
-        to: chatWith,
-        candidate: e.candidate
-      });
+      socket.emit("webrtc_ice", { to: chatWith, candidate: e.candidate });
     }
   };
-
-  if (type === "video") {
-    callScreen.style.display = "block";
-    localVideo.srcObject = localStream;
-  }
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
@@ -243,25 +232,30 @@ async function startCall(type) {
   socket.emit("webrtc_offer", {
     to: chatWith,
     offer,
-    callType: type
+    callType
   });
 
+  audioCallBtn.style.display = "none";
+  videoCallBtn.style.display = "none";
   muteBtn.style.display = "inline";
   endCallBtn.style.display = "inline";
 }
 
 socket.on("webrtc_offer", async data => {
-  callType = data.callType;
-
-  const accept = confirm(
-    `Incoming ${callType === "video" ? "Video" : "Audio"} Call`
-  );
+  const accept = confirm(`Incoming ${data.callType} call`);
   if (!accept) return;
+
+  callType = data.callType;
 
   localStream = await navigator.mediaDevices.getUserMedia({
     audio: true,
     video: callType === "video"
   });
+
+  if (callType === "video") {
+    callScreen.style.display = "block";
+    localVideo.srcObject = localStream;
+  }
 
   peerConnection = new RTCPeerConnection(servers);
 
@@ -270,62 +264,57 @@ socket.on("webrtc_offer", async data => {
   );
 
   peerConnection.ontrack = e => {
-    remoteVideo.srcObject = e.streams[0];
+    if (callType === "video") {
+      remoteVideo.srcObject = e.streams[0];
+    } else {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.play();
+    }
   };
 
   peerConnection.onicecandidate = e => {
     if (e.candidate) {
-      socket.emit("webrtc_ice", {
-        to: data.from,
-        candidate: e.candidate
-      });
+      socket.emit("webrtc_ice", { to: data.from, candidate: e.candidate });
     }
   };
-
-  if (callType === "video") {
-    callScreen.style.display = "block";
-    localVideo.srcObject = localStream;
-  }
 
   await peerConnection.setRemoteDescription(data.offer);
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
 
-  socket.emit("webrtc_answer", {
-    to: data.from,
-    answer
-  });
+  socket.emit("webrtc_answer", { to: data.from, answer });
 
   muteBtn.style.display = "inline";
   endCallBtn.style.display = "inline";
 });
 
-socket.on("webrtc_answer", async data => {
-  await peerConnection.setRemoteDescription(data.answer);
+socket.on("webrtc_answer", async answer => {
+  await peerConnection.setRemoteDescription(answer);
 });
 
-socket.on("webrtc_ice", async data => {
-  if (peerConnection) {
-    await peerConnection.addIceCandidate(data.candidate);
-  }
+socket.on("webrtc_ice", async candidate => {
+  if (peerConnection) await peerConnection.addIceCandidate(candidate);
 });
 
-muteBtn.onclick = () => {
+muteBtn.addEventListener("click", () => {
   localStream.getAudioTracks().forEach(t => (t.enabled = muted));
   muted = !muted;
   muteBtn.innerText = muted ? "🔊" : "🔕";
-};
+});
 
-endCallBtn.onclick = () => {
+endCallBtn.addEventListener("click", () => {
   peerConnection.close();
   localStream.getTracks().forEach(t => t.stop());
   callScreen.style.display = "none";
 
   socket.emit("call_end", { to: chatWith });
 
+  audioCallBtn.style.display = "inline";
+  videoCallBtn.style.display = "inline";
   muteBtn.style.display = "none";
   endCallBtn.style.display = "none";
-};
+});
 
 socket.on("call_ended", () => {
   endCallBtn.click();
