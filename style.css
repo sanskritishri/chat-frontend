@@ -214,4 +214,17 @@ body {
   touch-action: manipulation;
 }
 
+#micBtn {
+  border: none;
+  background: #eee;
+  font-size: 18px;
+  margin: 0 5px;
+  cursor: pointer;
+}
+
+#micBtn.recording {
+  background: red;
+  color: white;
+}
+
 
