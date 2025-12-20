@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Private Chat</title>
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
@@ -15,7 +15,6 @@
   <!-- HEADER -->
   <div class="chat-header">
     <span>Private Chat</span>
-
     <div class="call-buttons">
       <button id="audioCallBtn">📞</button>
       <button id="videoCallBtn">📹</button>
@@ -43,14 +42,7 @@
     </div>
   </div>
 
-  <!-- MESSAGES -->
-  <div id="chatMessages" class="chat-messages"></div>
-
-  <div id="typingIndicator" class="typing-indicator" style="display:none;">
-    typing...
-  </div>
-
-  <!-- EMOJI -->
+  <!-- EMOJI PICKER -->
   <div id="reactionPicker" class="reaction-picker">
     <span onclick="sendReaction('👍')">👍</span>
     <span onclick="sendReaction('❤️')">❤️</span>
@@ -59,9 +51,17 @@
     <span onclick="sendReaction('😢')">😢</span>
   </div>
 
+  <!-- MESSAGES -->
+  <div id="chatMessages" class="chat-messages"></div>
+
+  <div id="typingIndicator" class="typing-indicator" style="display:none;">
+    typing...
+  </div>
+
   <!-- INPUT -->
   <div class="chat-input">
-    <input id="messageInput" placeholder="Type your message...">
+    <input id="messageInput" placeholder="Type your message..." />
+    <button id="micBtn">🎤</button>
     <button id="sendBtn">Send</button>
   </div>
 
