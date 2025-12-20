@@ -2,6 +2,12 @@
 const token = sessionStorage.getItem("token");
 const myEmail = sessionStorage.getItem("email");
 const chatWith = sessionStorage.getItem("chatWith");
+let localStream;
+let peerConnection;
+
+const servers = {
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
 
 if (!token || !chatWith) location.href = "login.html";
 document.getElementById("chatWith").innerText = chatWith;
@@ -20,6 +26,9 @@ const picker = document.getElementById("reactionPicker");
 const typingDiv = document.getElementById("typingIndicator");
 const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
+// ===== CALL BUTTONS =====
+const callBtn = document.getElementById("callBtn");
+const endCallBtn = document.getElementById("endCallBtn");
 
 let selectedMessageId = null;
 let typingTimeout;
@@ -28,6 +37,28 @@ let typingTimeout;
 sendBtn.addEventListener("click", sendMessage);
 input.addEventListener("keydown", e => {
   if (e.key === "Enter") sendMessage();
+});
+// ===== CALL START (TOP LEVEL) =====
+callBtn.addEventListener("click", async () => {
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  peerConnection = new RTCPeerConnection(servers);
+
+  localStream.getTracks().forEach(track =>
+    peerConnection.addTrack(track, localStream)
+  );
+
+  peerConnection.ontrack = e => {
+    const audio = document.createElement("audio");
+    audio.srcObject = e.streams[0];
+    audio.autoplay = true;
+    document.body.appendChild(audio);
+  };
+
+  socket.emit("call_user", { to: chatWith });
+
+  callBtn.style.display = "none";
+  endCallBtn.style.display = "inline";
 });
 
 function sendMessage() {
@@ -43,6 +74,7 @@ function sendMessage() {
       minute: "2-digit"
     })
   };
+
 
   renderMessage({ ...msg, from: myEmail }, true);
   socket.emit("private_message", msg);
@@ -212,6 +244,29 @@ micBtn.addEventListener("click", async () => {
 socket.on("voice_message", data => {
   renderVoice(data.audio, false);
 });
+socket.on("incoming_call", async data => {
+  const accept = confirm("Incoming call. Accept?");
+  if (!accept) return;
+
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  peerConnection = new RTCPeerConnection(servers);
+
+  localStream.getTracks().forEach(track =>
+    peerConnection.addTrack(track, localStream)
+  );
+
+  peerConnection.ontrack = e => {
+    const audio = document.createElement("audio");
+    audio.srcObject = e.streams[0];
+    audio.autoplay = true;
+    document.body.appendChild(audio);
+  };
+
+  socket.emit("call_answer", { to: data.from });
+
+  endCallBtn.style.display = "inline";
+});
 
 function renderVoice(src, isMe) {
   const div = document.createElement("div");
@@ -220,4 +275,21 @@ function renderVoice(src, isMe) {
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+endCallBtn.addEventListener("click", () => {
+  if (peerConnection) peerConnection.close();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+  socket.emit("call_end", { to: chatWith });
+
+  callBtn.style.display = "inline";
+  endCallBtn.style.display = "none";
+});
+
+socket.on("call_ended", () => {
+  if (peerConnection) peerConnection.close();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+  alert("Call ended");
+});
 
