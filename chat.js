@@ -177,32 +177,32 @@ socket.on("reaction", d => {
 let localStream;
 let peerConnection;
 let callType = "audio";
-// let muted = false;
+let muted = false;
 
 const servers = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
 };
 
-// audioCallBtn.addEventListener("click", () => {
-//   callType = "audio";
-//   startCall();
-// });
+audioCallBtn.addEventListener("click", () => {
+  callType = "audio";
+  startCall();
+});
 
-// videoCallBtn.addEventListener("click", () => {
-//   callType = "video";
-//   startCall();
-// });
+videoCallBtn.addEventListener("click", () => {
+  callType = "video";
+  startCall();
+});
 
-audioCallBtn.onclick = () => startCall("audio");
-videoCallBtn.onclick = () => startCall("video");
-
-async function startCall(type) {
-  callType = type;
-
+async function startCall() {
   localStream = await navigator.mediaDevices.getUserMedia({
     audio: true,
-    video: type === "video"
+    video: callType === "video"
   });
+
+  if (callType === "video") {
+    callScreen.style.display = "block";
+    localVideo.srcObject = localStream;
+  }
 
   peerConnection = new RTCPeerConnection(servers);
 
@@ -211,22 +211,20 @@ async function startCall(type) {
   );
 
   peerConnection.ontrack = e => {
-    remoteVideo.srcObject = e.streams[0];
+    if (callType === "video") {
+      remoteVideo.srcObject = e.streams[0];
+    } else {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.play();
+    }
   };
 
   peerConnection.onicecandidate = e => {
     if (e.candidate) {
-      socket.emit("webrtc_ice", {
-        to: chatWith,
-        candidate: e.candidate
-      });
+      socket.emit("webrtc_ice", { to: chatWith, candidate: e.candidate });
     }
   };
-
-  if (type === "video") {
-    callScreen.style.display = "block";
-    localVideo.srcObject = localStream;
-  }
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
@@ -234,63 +232,14 @@ async function startCall(type) {
   socket.emit("webrtc_offer", {
     to: chatWith,
     offer,
-    callType: type
+    callType
   });
-}
 
   audioCallBtn.style.display = "none";
   videoCallBtn.style.display = "none";
   muteBtn.style.display = "inline";
   endCallBtn.style.display = "inline";
 }
-
-socket.on("webrtc_offer", async data => {
-  callType = data.callType;
-
-  const accept = confirm(
-    `Incoming ${callType === "video" ? "Video" : "Audio"} Call`
-  );
-  if (!accept) return;
-
-  localStream = await navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: callType === "video"
-  });
-
-  peerConnection = new RTCPeerConnection(servers);
-
-  localStream.getTracks().forEach(t =>
-    peerConnection.addTrack(t, localStream)
-  );
-
-  peerConnection.ontrack = e => {
-    remoteVideo.srcObject = e.streams[0];
-  };
-
-  peerConnection.onicecandidate = e => {
-    if (e.candidate) {
-      socket.emit("webrtc_ice", {
-        to: data.from,
-        candidate: e.candidate
-      });
-    }
-  };
-
-  if (callType === "video") {
-    callScreen.style.display = "block";
-    localVideo.srcObject = localStream;
-  }
-
-  await peerConnection.setRemoteDescription(data.offer);
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-
-  socket.emit("webrtc_answer", {
-    to: data.from,
-    answer
-  });
-});
-
 
 socket.on("webrtc_offer", async data => {
   const accept = confirm(`Incoming ${data.callType} call`);
@@ -334,50 +283,38 @@ socket.on("webrtc_offer", async data => {
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
 
- socket.on("webrtc_answer", async data => {
-  await peerConnection.setRemoteDescription(data.answer);
-});
+  socket.emit("webrtc_answer", { to: data.from, answer });
 
   muteBtn.style.display = "inline";
   endCallBtn.style.display = "inline";
 });
 
-socket.on("webrtc_answer", async data => {
-  await peerConnection.setRemoteDescription(data.answer);
+socket.on("webrtc_answer", async answer => {
+  await peerConnection.setRemoteDescription(answer);
 });
 
-let muted = false;
-muteBtn.onclick = () => {
-  localStream.getAudioTracks().forEach(t => t.enabled = muted);
+socket.on("webrtc_ice", async candidate => {
+  if (peerConnection) await peerConnection.addIceCandidate(candidate);
+});
+
+muteBtn.addEventListener("click", () => {
+  localStream.getAudioTracks().forEach(t => (t.enabled = muted));
   muted = !muted;
   muteBtn.innerText = muted ? "🔊" : "🔕";
-};
+});
 
-
-// endCallBtn.addEventListener("click", () => {
-//   peerConnection.close();
-//   localStream.getTracks().forEach(t => t.stop());
-//   callScreen.style.display = "none";
-
-//   socket.emit("call_end", { to: chatWith });
-
-//   audioCallBtn.style.display = "inline";
-//   videoCallBtn.style.display = "inline";
-//   muteBtn.style.display = "none";
-//   endCallBtn.style.display = "none";
-// });
-
-// socket.on("call_ended", () => {
-//   endCallBtn.click();
-// });
-
-endCallBtn.onclick = () => {
+endCallBtn.addEventListener("click", () => {
   peerConnection.close();
   localStream.getTracks().forEach(t => t.stop());
   callScreen.style.display = "none";
 
   socket.emit("call_end", { to: chatWith });
-};
+
+  audioCallBtn.style.display = "inline";
+  videoCallBtn.style.display = "inline";
+  muteBtn.style.display = "none";
+  endCallBtn.style.display = "none";
+});
 
 socket.on("call_ended", () => {
   endCallBtn.click();
