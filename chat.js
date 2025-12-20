@@ -33,6 +33,20 @@ const statusText = document.getElementById("statusText");
 const callBtn = document.getElementById("callBtn");
 const endCallBtn = document.getElementById("endCallBtn");
 
+const muteBtn = document.getElementById("muteBtn");
+let isMuted = false;
+
+muteBtn.addEventListener("click", () => {
+  localStream.getAudioTracks().forEach(track => {
+    track.enabled = isMuted;
+  });
+  isMuted = !isMuted;
+  muteBtn.innerText = isMuted ? "🔊" : "🔕";
+});
+
+
+
+
 let selectedMessageId = null;
 let typingTimeout;
 
@@ -356,21 +370,35 @@ function renderVoice(src, isMe) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// endCallBtn.addEventListener("click", () => {
+//   if (peerConnection) peerConnection.close();
+//   if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+//   socket.emit("call_end", { to: chatWith });
+
+//   callBtn.style.display = "inline";
+//   endCallBtn.style.display = "none";
+// });
+
+// socket.on("call_ended", () => {
+//   if (peerConnection) peerConnection.close();
+//   if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+//   alert("Call ended");
+// });
+
 endCallBtn.addEventListener("click", () => {
-  if (peerConnection) peerConnection.close();
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  peerConnection.close();
+
+  localStream.getTracks().forEach(t => t.stop());
+
+  localVideo.style.display = "none";
+  remoteVideo.style.display = "none";
 
   socket.emit("call_end", { to: chatWith });
 
   callBtn.style.display = "inline";
   endCallBtn.style.display = "none";
-});
-
-socket.on("call_ended", () => {
-  if (peerConnection) peerConnection.close();
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-
-  alert("Call ended");
 });
 
 
