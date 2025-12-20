@@ -61,6 +61,10 @@ function sendMessage() {
 socket.on("private_message", msg => {
   renderMessage({ ...msg, status: "delivered" }, false);
 
+  socket.on("voice_message", data => {
+  renderVoice(data.audio, false);
+});
+
   // auto seen
   socket.emit("seen", {
     id: msg.id,
@@ -284,5 +288,6 @@ socket.on("user_status", data => {
     }
   }
 });
+
 
 
