@@ -228,3 +228,40 @@ body {
 }
 
 
+/* ===== FULL SCREEN MOBILE FIX ===== */
+@media (max-width: 768px) {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .chat-container {
+    width: 100%;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .chat-input {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #fff;
+  }
+
+  .chat-input input {
+    font-size: 16px;
+  }
+
+  #micBtn, #sendBtn {
+    font-size: 18px;
+  }
+}
+
