@@ -105,6 +105,48 @@ function renderMessage(msg, isMe) {
     </div>` : ""}
   `;
 
+
+let mediaRecorder;
+let audioChunks = [];
+const micBtn = document.getElementById("micBtn");
+
+// START / STOP recording
+micBtn.addEventListener("click", async () => {
+  if (!mediaRecorder || mediaRecorder.state === "inactive") {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        socket.emit("voice_message", {
+          to: chatWith,
+          audio: reader.result
+        });
+
+        renderVoice(reader.result, true);
+      };
+
+      reader.readAsDataURL(audioBlob);
+    };
+
+    mediaRecorder.start();
+    micBtn.classList.add("recording");
+  } else {
+    mediaRecorder.stop();
+    micBtn.classList.remove("recording");
+  }
+});
+
+
+
+  
   // long press → emoji
  // LONG PRESS (MOBILE + DESKTOP)
 let pressTimer;
@@ -174,6 +216,18 @@ socket.on("delete_message", data => {
   document.querySelector(`[data-id='${data.id}']`)?.remove();
 });
 
+  function renderVoice(audioSrc, isMe) {
+  const div = document.createElement("div");
+  div.className = `message ${isMe ? "user" : "helper"}`;
+
+  div.innerHTML = `
+    <audio controls src="${audioSrc}"></audio>
+  `;
+
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
 /* EMOJI */
 function sendReaction(emoji) {
   if (!selectedMessageId) return;
@@ -230,4 +284,5 @@ socket.on("user_status", data => {
     }
   }
 });
+
 
