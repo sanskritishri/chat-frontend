@@ -15,8 +15,9 @@ const socket = io("https://private-chat-ftj0.onrender.com", {
 const chatBox = document.getElementById("chatMessages");
 const input = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
-const typingDiv = document.getElementById("typingIndicator");
+const micBtn = document.getElementById("micBtn");
 const picker = document.getElementById("reactionPicker");
+const typingDiv = document.getElementById("typingIndicator");
 
 const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
@@ -57,6 +58,7 @@ function sendMessage() {
 
 socket.on("private_message", msg => {
   renderMessage(msg, false);
+  socket.emit("seen", { id: msg.id, to: msg.from });
 });
 
 // ================= TYPING =================
@@ -95,7 +97,7 @@ socket.on("user_status", d => {
   }
 });
 
-// ================= RENDER =================
+// ================= RENDER MESSAGE =================
 function renderMessage(msg, isMe) {
   const div = document.createElement("div");
   div.className = `message ${isMe ? "user" : "helper"}`;
@@ -104,6 +106,11 @@ function renderMessage(msg, isMe) {
   div.innerHTML = `
     <div class="text">${msg.text}</div>
     <span class="time">${msg.time}</span>
+    ${isMe ? `
+      <div class="actions">
+        <button onclick="editMessage(${msg.id})">✏️</button>
+        <button onclick="deleteMessage(${msg.id})">🗑️</button>
+      </div>` : ""}
   `;
 
   let timer;
@@ -121,16 +128,84 @@ function renderMessage(msg, isMe) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// ================= EDIT / DELETE =================
+function editMessage(id) {
+  const newText = prompt("Edit message");
+  if (!newText) return;
+  document.querySelector(`[data-id='${id}'] .text`).innerText = newText;
+  socket.emit("edit_message", { id, to: chatWith, text: newText });
+}
+
+socket.on("edit_message", d => {
+  document.querySelector(`[data-id='${d.id}'] .text`).innerText = d.text;
+});
+
+function deleteMessage(id) {
+  document.querySelector(`[data-id='${id}']`)?.remove();
+  socket.emit("delete_message", { id, to: chatWith });
+}
+
+socket.on("delete_message", d => {
+  document.querySelector(`[data-id='${d.id}']`)?.remove();
+});
+
 // ================= EMOJI =================
 function sendReaction(emoji) {
   if (!selectedMessageId) return;
   const div = document.querySelector(`[data-id='${selectedMessageId}']`);
   if (div) div.innerHTML += `<div class="reactions">${emoji}</div>`;
+  socket.emit("reaction", { id: selectedMessageId, to: chatWith, emoji });
   picker.style.display = "none";
   selectedMessageId = null;
 }
 
-// ================= CALLING =================
+socket.on("reaction", d => {
+  const div = document.querySelector(`[data-id='${d.id}']`);
+  if (div) div.innerHTML += `<div class="reactions">${d.emoji}</div>`;
+});
+
+// ================= VOICE NOTE =================
+let mediaRecorder;
+let audioChunks = [];
+
+micBtn.onclick = async () => {
+  if (!mediaRecorder || mediaRecorder.state === "inactive") {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        socket.emit("voice_message", { to: chatWith, audio: reader.result });
+        renderVoice(reader.result, true);
+      };
+      reader.readAsDataURL(blob);
+    };
+
+    mediaRecorder.start();
+    micBtn.classList.add("recording");
+  } else {
+    mediaRecorder.stop();
+    micBtn.classList.remove("recording");
+  }
+};
+
+socket.on("voice_message", d => {
+  renderVoice(d.audio, false);
+});
+
+function renderVoice(src, isMe) {
+  const div = document.createElement("div");
+  div.className = `message ${isMe ? "user" : "helper"}`;
+  div.innerHTML = `<audio controls src="${src}"></audio>`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// ================= CALLING (WEBRTC) =================
 let peerConnection;
 let localStream;
 let callType = "audio";
@@ -152,7 +227,6 @@ async function startCall(type) {
   });
 
   peerConnection = new RTCPeerConnection(servers);
-
   localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
 
   peerConnection.ontrack = e => {
@@ -160,9 +234,8 @@ async function startCall(type) {
   };
 
   peerConnection.onicecandidate = e => {
-    if (e.candidate) {
+    if (e.candidate)
       socket.emit("webrtc_ice", { to: chatWith, candidate: e.candidate });
-    }
   };
 
   if (type === "video") {
@@ -180,9 +253,8 @@ async function startCall(type) {
 }
 
 socket.on("webrtc_offer", async data => {
+  if (!confirm(`Incoming ${data.callType} call`)) return;
   callType = data.callType;
-  const ok = confirm(`Incoming ${callType} call`);
-  if (!ok) return;
 
   localStream = await navigator.mediaDevices.getUserMedia({
     audio: true,
@@ -197,9 +269,8 @@ socket.on("webrtc_offer", async data => {
   };
 
   peerConnection.onicecandidate = e => {
-    if (e.candidate) {
+    if (e.candidate)
       socket.emit("webrtc_ice", { to: data.from, candidate: e.candidate });
-    }
   };
 
   if (callType === "video") {
@@ -217,12 +288,12 @@ socket.on("webrtc_offer", async data => {
   endCallBtn.style.display = "inline";
 });
 
-socket.on("webrtc_answer", async data => {
-  await peerConnection.setRemoteDescription(data.answer);
+socket.on("webrtc_answer", d => {
+  peerConnection.setRemoteDescription(d.answer);
 });
 
-socket.on("webrtc_ice", async data => {
-  if (peerConnection) await peerConnection.addIceCandidate(data.candidate);
+socket.on("webrtc_ice", d => {
+  peerConnection?.addIceCandidate(d.candidate);
 });
 
 muteBtn.onclick = () => {
