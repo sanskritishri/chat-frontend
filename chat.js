@@ -106,18 +106,29 @@ function renderMessage(msg, isMe) {
   `;
 
   // long press → emoji
-  let timer;
-  div.onmousedown = () => {
-    timer = setTimeout(() => {
-      selectedMessageId = msg.id;
-      picker.style.display = "block";
-    }, 600);
-  };
-  div.onmouseup = div.onmouseleave = () => clearTimeout(timer);
+ // LONG PRESS (MOBILE + DESKTOP)
+let pressTimer;
 
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+const startPress = () => {
+  pressTimer = setTimeout(() => {
+    selectedMessageId = msg.id;
+    picker.style.display = "block";
+  }, 600);
+};
+
+const endPress = () => {
+  clearTimeout(pressTimer);
+};
+
+// Desktop
+div.addEventListener("mousedown", startPress);
+div.addEventListener("mouseup", endPress);
+div.addEventListener("mouseleave", endPress);
+
+// Mobile
+div.addEventListener("touchstart", startPress);
+div.addEventListener("touchend", endPress);
+div.addEventListener("touchcancel", endPress);
 
 /* SEEN */
 socket.on("seen", data => {
@@ -219,3 +230,4 @@ socket.on("user_status", data => {
     }
   }
 });
+
