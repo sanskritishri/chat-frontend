@@ -4,6 +4,7 @@ const myEmail = sessionStorage.getItem("email");
 const chatWith = sessionStorage.getItem("chatWith");
 let localStream;
 let peerConnection;
+let callType = "audio"; // audio | video
 
 const servers = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -11,6 +12,13 @@ const servers = {
 
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
+const callScreen = document.getElementById("callScreen");
+
+const audioCallBtn = document.getElementById("audioCallBtn");
+const videoCallBtn = document.getElementById("videoCallBtn");
+const muteBtn = document.getElementById("muteBtn");
+const endCallBtn = document.getElementById("endCallBtn");
+
 
 if (!token || !chatWith) location.href = "login.html";
 document.getElementById("chatWith").innerText = chatWith;
@@ -43,6 +51,20 @@ muteBtn.addEventListener("click", () => {
   isMuted = !isMuted;
   muteBtn.innerText = isMuted ? "🔊" : "🔕";
 });
+
+audioCallBtn.addEventListener("click", () => {
+  callType = "audio";
+  startCall();
+});
+videoCallBtn.addEventListener("click", () => {
+  callType = "video";
+  startCall();
+});
+
+
+
+
+
 
 
 
@@ -97,6 +119,60 @@ callBtn.addEventListener("click", async () => {
   callBtn.style.display = "none";
   endCallBtn.style.display = "inline";
 });
+
+
+async function startCall() {
+  localStream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: callType === "video"
+  });
+
+  if (callType === "video") {
+    callScreen.style.display = "block";
+    localVideo.srcObject = localStream;
+  }
+
+  peerConnection = new RTCPeerConnection(servers);
+
+  localStream.getTracks().forEach(track =>
+    peerConnection.addTrack(track, localStream)
+  );
+
+  peerConnection.ontrack = e => {
+    if (callType === "video") {
+      remoteVideo.srcObject = e.streams[0];
+    } else {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.play();
+    }
+  };
+
+  peerConnection.onicecandidate = e => {
+    if (e.candidate) {
+      socket.emit("webrtc_ice", {
+        to: chatWith,
+        candidate: e.candidate
+      });
+    }
+  };
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+
+  socket.emit("webrtc_offer", {
+    to: chatWith,
+    offer,
+    callType
+  });
+
+  audioCallBtn.style.display = "none";
+  videoCallBtn.style.display = "none";
+  muteBtn.style.display = "inline";
+  endCallBtn.style.display = "inline";
+}
+
+
 
 
 function sendMessage() {
@@ -360,6 +436,77 @@ socket.on("webrtc_ice", async candidate => {
   }
 });
 
+socket.on("webrtc_offer", async data => {
+  const accept = confirm(
+    `Incoming ${data.callType === "video" ? "Video" : "Audio"} Call`
+  );
+  if (!accept) return;
+
+  callType = data.callType;
+
+  localStream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: callType === "video"
+  });
+
+  if (callType === "video") {
+    callScreen.style.display = "block";
+    localVideo.srcObject = localStream;
+  }
+
+  peerConnection = new RTCPeerConnection(servers);
+
+  localStream.getTracks().forEach(track =>
+    peerConnection.addTrack(track, localStream)
+  );
+
+  peerConnection.ontrack = e => {
+    if (callType === "video") {
+      remoteVideo.srcObject = e.streams[0];
+    } else {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.play();
+    }
+  };
+
+  peerConnection.onicecandidate = e => {
+    if (e.candidate) {
+      socket.emit("webrtc_ice", {
+        to: data.from,
+        candidate: e.candidate
+      });
+    }
+  };
+
+  await peerConnection.setRemoteDescription(data.offer);
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  socket.emit("webrtc_answer", {
+    to: data.from,
+    answer
+  });
+
+  muteBtn.style.display = "inline";
+  endCallBtn.style.display = "inline";
+});
+
+socket.on("webrtc_answer", async answer => {
+  await peerConnection.setRemoteDescription(answer);
+});
+
+socket.on("webrtc_ice", async candidate => {
+  await peerConnection.addIceCandidate(candidate);
+});
+
+let muted = false;
+
+muteBtn.addEventListener("click", () => {
+  localStream.getAudioTracks().forEach(t => (t.enabled = muted));
+  muted = !muted;
+  muteBtn.innerText = muted ? "🔊" : "🔕";
+});
 
 
 function renderVoice(src, isMe) {
@@ -370,35 +517,22 @@ function renderVoice(src, isMe) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// endCallBtn.addEventListener("click", () => {
-//   if (peerConnection) peerConnection.close();
-//   if (localStream) localStream.getTracks().forEach(t => t.stop());
-
-//   socket.emit("call_end", { to: chatWith });
-
-//   callBtn.style.display = "inline";
-//   endCallBtn.style.display = "none";
-// });
-
-// socket.on("call_ended", () => {
-//   if (peerConnection) peerConnection.close();
-//   if (localStream) localStream.getTracks().forEach(t => t.stop());
-
-//   alert("Call ended");
-// });
-
 endCallBtn.addEventListener("click", () => {
   peerConnection.close();
-
   localStream.getTracks().forEach(t => t.stop());
 
-  localVideo.style.display = "none";
-  remoteVideo.style.display = "none";
+  callScreen.style.display = "none";
 
   socket.emit("call_end", { to: chatWith });
 
-  callBtn.style.display = "inline";
+  audioCallBtn.style.display = "inline";
+  videoCallBtn.style.display = "inline";
+  muteBtn.style.display = "none";
   endCallBtn.style.display = "none";
+});
+
+socket.on("call_ended", () => {
+  endCallBtn.click();
 });
 
 
