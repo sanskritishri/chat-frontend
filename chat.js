@@ -18,6 +18,9 @@ const chatBox = document.getElementById("chatMessages");
 const input = document.getElementById("messageInput");
 const picker = document.getElementById("reactionPicker");
 
+const sendBtn = document.getElementById("sendBtn");
+
+sendBtn.addEventListener("click", sendMessage);
 
 
 let selectedMessageId = null;
@@ -112,41 +115,51 @@ function renderMessage(msg, isMe) {
 
 let mediaRecorder;
 let audioChunks = [];
+
 const micBtn = document.getElementById("micBtn");
 
-// START / STOP recording
 micBtn.addEventListener("click", async () => {
-  if (!mediaRecorder || mediaRecorder.state === "inactive") {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
+    // START recording
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
 
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-      const reader = new FileReader();
-
-      reader.onloadend = () => {
-        socket.emit("voice_message", {
-          to: chatWith,
-          audio: reader.result
-        });
-
-        renderVoice(reader.result, true);
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
       };
 
-      reader.readAsDataURL(audioBlob);
-    };
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const reader = new FileReader();
 
-    mediaRecorder.start();
-    micBtn.classList.add("recording");
-  } else {
-    mediaRecorder.stop();
-    micBtn.classList.remove("recording");
+        reader.onloadend = () => {
+          socket.emit("voice_message", {
+            to: chatWith,
+            audio: reader.result
+          });
+
+          renderVoice(reader.result, true);
+        };
+
+        reader.readAsDataURL(audioBlob);
+      };
+
+      mediaRecorder.start();
+      micBtn.classList.add("recording");
+    }
+    // STOP recording
+    else {
+      mediaRecorder.stop();
+      micBtn.classList.remove("recording");
+    }
+  } catch (err) {
+    alert("Microphone permission denied");
   }
 });
+  
 
 
 
@@ -288,6 +301,7 @@ socket.on("user_status", data => {
     }
   }
 });
+
 
 
 
