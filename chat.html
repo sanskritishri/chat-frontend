@@ -13,18 +13,21 @@
 
 <div class="chat-container">
   <div class="chat-header">Chat</div>  
- <div class="call-controls">
-  <button id="audioCallBtn">📞</button>
-  <button id="videoCallBtn">📹</button>
-  <button id="muteBtn" style="display:none">🔕</button>
-  <button id="endCallBtn" style="display:none">❌</button>
+<!-- CALL SCREEN -->
+<div id="callScreen" class="call-screen" style="display:none;">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay muted playsinline class="local-video"></video>
+
+  <div class="call-controls">
+    <button id="muteBtn">🔕</button>
+    <button id="endCallBtn">❌</button>
+  </div>
 </div>
 
-<!-- Call Screen -->
-<div id="callScreen" class="call-screen" style="display:none">
-  <video id="remoteVideo" autoplay playsinline></video>
-  <video id="localVideo" autoplay muted playsinline></video>
-</div>
+<!-- CHAT HEADER BUTTONS -->
+<button id="audioCallBtn">📞</button>
+<button id="videoCallBtn">📹</button>
+
 
 
   <div class="user-status">
@@ -64,6 +67,7 @@
 <script src="chat.js"></script>
 </body>
 </html>
+
 
 
 
