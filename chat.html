@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,35 +9,26 @@
 </head>
 <body>
 
-  
 <div class="chat-container">
   <div class="chat-header">
-    <div class="user-info">
-      <span id="chatWith"></span>
-      <div class="status-wrapper">
-        <span id="statusDot" class="dot offline"></span>
-        <span id="statusText">Offline</span>
+    <div class="user-profile">
+      <div class="avatar">👤</div>
+      <div class="user-details">
+        <h4 id="chatWith">Loading...</h4>
+        <div class="status-indicator">
+          <span id="statusDot" class="dot offline"></span>
+          <span id="statusText">offline</span>
+        </div>
       </div>
     </div>
-    <div class="header-btns">
-      <button id="audioCallBtn">📞</button>
-      <button id="videoCallBtn">📹</button>
+    <div class="call-actions">
+      <button id="audioCallBtn" title="Audio Call">📞</button>
+      <button id="videoCallBtn" title="Video Call">📹</button>
     </div>
   </div>
 
-  <div id="callScreen" class="call-screen" style="display:none;">
-    <div class="call-info">
-      <h2 id="callingText">Calling...</h2>
-      <p id="callDuration">00:00</p>
-    </div>
-    <video id="remoteVideo" autoplay playsinline></video>
-    <video id="localVideo" autoplay muted playsinline class="local-video"></video>
-    
-    <div class="call-controls">
-      <button id="muteBtn" class="control-btn">🔕</button>
-      <button id="endCallBtn" class="control-btn hangup">❌</button>
-    </div>
-  </div>
+  <div id="chatMessages" class="chat-messages"></div>
+  <div id="typingIndicator" class="typing-indicator" style="display:none;">typing...</div>
 
   <div id="reactionPicker" class="reaction-picker">
     <span onclick="sendReaction('👍')">👍</span>
@@ -47,17 +38,29 @@
     <span onclick="sendReaction('😢')">😢</span>
   </div>
 
-  <div id="chatMessages" class="chat-messages"></div>
-  <div id="typingIndicator" class="typing-indicator" style="display:none;">typing...</div>
+  <div class="input-area">
+    <button id="micBtn" class="icon-btn">🎤</button>
+    <input type="text" id="messageInput" placeholder="Aapka sandesh...">
+    <button id="sendBtn" class="send-btn">Bhejen</button>
+  </div>
 
-  <div class="chat-input">
-    <button id="micBtn">🎤</button>
-    <input id="messageInput" placeholder="Type your message...">
-    <button id="sendBtn">Send</button>
+  <div id="callScreen" class="call-overlay" style="display:none;">
+    <div class="remote-video-container">
+      <video id="remoteVideo" autoplay playsinline></video>
+      <div class="call-status">
+        <h2 id="callingUserName">User</h2>
+        <p id="callTimer">00:00</p>
+      </div>
+    </div>
+    <video id="localVideo" autoplay muted playsinline class="mini-local-video"></video>
+    
+    <div class="call-footer">
+      <button id="muteBtn" class="call-btn">🔕</button>
+      <button id="endCallBtn" class="call-btn hangup">❌</button>
+    </div>
   </div>
 </div>
 
 <script src="chat.js"></script>
 </body>
 </html>
-
