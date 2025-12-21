@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Private Chat</title>
 
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
@@ -42,15 +42,6 @@
     </div>
   </div>
 
-  <!-- EMOJI PICKER -->
-  <div id="reactionPicker" class="reaction-picker">
-    <span onclick="sendReaction('👍')">👍</span>
-    <span onclick="sendReaction('❤️')">❤️</span>
-    <span onclick="sendReaction('😂')">😂</span>
-    <span onclick="sendReaction('😮')">😮</span>
-    <span onclick="sendReaction('😢')">😢</span>
-  </div>
-
   <!-- MESSAGES -->
   <div id="chatMessages" class="chat-messages"></div>
 
@@ -60,8 +51,7 @@
 
   <!-- INPUT -->
   <div class="chat-input">
-    <input id="messageInput" placeholder="Type your message..." />
-    <button id="micBtn">🎤</button>
+    <input id="messageInput" placeholder="Type your message...">
     <button id="sendBtn">Send</button>
   </div>
 
