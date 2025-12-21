@@ -212,8 +212,22 @@ let callType = "audio";
 let muted = false;
 
 const servers = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  iceServers: [
+    {
+      urls: "stun:stun.l.google.com:19302"
+    },
+    {
+      urls: [
+        "turn:global.relay.metered.ca:80",
+        "turn:global.relay.metered.ca:443",
+        "turn:global.relay.metered.ca:443?transport=tcp"
+      ],
+      username: "bd2d8f73bf3c57aa2fb0412c",
+      credential: "q7brVYvWZS8q5E4B"
+    }
+  ]
 };
+
 
 audioCallBtn.onclick = () => startCall("audio");
 videoCallBtn.onclick = () => startCall("video");
@@ -312,3 +326,4 @@ endCallBtn.onclick = () => {
 socket.on("call_ended", () => {
   endCallBtn.click();
 });
+
