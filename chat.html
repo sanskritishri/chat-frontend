@@ -1,61 +1,69 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Private Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
+  
+  <title>Private Chat</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 
 <div class="chat-container">
+  <div class="chat-header">Chat</div>  
+<!-- CALL SCREEN -->
+<div id="callScreen" class="call-screen" style="display:none;">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay muted playsinline class="local-video"></video>
 
-  <!-- HEADER -->
-  <div class="chat-header">
-    <span>Private Chat</span>
-    <div class="call-buttons">
-      <button id="audioCallBtn">📞</button>
-      <button id="videoCallBtn">📹</button>
-    </div>
+  <div class="call-controls">
+    <button id="muteBtn">🔕</button>
+    <button id="endCallBtn">❌</button>
   </div>
+</div>
 
-  <!-- STATUS -->
+<!-- CHAT HEADER BUTTONS -->
+<button id="audioCallBtn">📞</button>
+<button id="videoCallBtn">📹</button>
+
+
+
   <div class="user-status">
-    <span id="statusDot" class="dot offline"></span>
-    <span id="statusText">Offline</span>
-  </div>
+  <span id="statusDot" class="dot offline"></span>
+  <span id="statusText">Offline</span>
+</div>
 
   <div class="chat-user">
-    Chatting with: <span id="chatWith"></span>
-  </div>
+  Chatting with: <span id="chatWith"></span>
+</div>
 
-  <!-- CALL SCREEN -->
-  <div id="callScreen" class="call-screen" style="display:none;">
-    <video id="remoteVideo" autoplay playsinline></video>
-    <video id="localVideo" autoplay muted playsinline class="local-video"></video>
+<div id="reactionPicker" class="reaction-picker">
+  <span onclick="sendReaction('👍')">👍</span>
+  <span onclick="sendReaction('❤️')">❤️</span>
+  <span onclick="sendReaction('😂')">😂</span>
+  <span onclick="sendReaction('😮')">😮</span>
+  <span onclick="sendReaction('😢')">😢</span>
+</div>
 
-    <div class="call-controls">
-      <button id="muteBtn">🔕</button>
-      <button id="endCallBtn">❌</button>
-    </div>
-  </div>
 
-  <!-- MESSAGES -->
   <div id="chatMessages" class="chat-messages"></div>
+<div id="typingIndicator" class="typing-indicator" style="display:none;">
+  typing...
+</div>
 
-  <div id="typingIndicator" class="typing-indicator" style="display:none;">
-    typing...
-  </div>
-
-  <!-- INPUT -->
   <div class="chat-input">
     <input id="messageInput" placeholder="Type your message...">
-    <button id="sendBtn">Send</button>
-  </div>
+    <button id="micBtn">🎤</button>
 
+    <button id="sendBtn">Send</button>
+
+  </div>
 </div>
+<video id="localVideo" autoplay muted playsinline style="display:none"></video>
+<video id="remoteVideo" autoplay playsinline style="display:none"></video>
 
 <script src="chat.js"></script>
 </body>
