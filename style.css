@@ -16,6 +16,7 @@ body {
   border-radius: 10px;
 }
 
+/* HEADER */
 .chat-header {
   background: #1976d2;
   color: white;
@@ -24,67 +25,23 @@ body {
   justify-content: space-between;
 }
 
-.user-status, .chat-user {
-  padding: 6px 10px;
-  font-size: 13px;
-}
-
+/* STATUS */
+.user-status { padding: 6px 10px; font-size: 13px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .online { background: green; } .offline { background: red; }
 
-.chat-messages {
-  flex: 1;
-  padding: 10px;
-  overflow-y: auto;
-}
-
-.message {
-  padding: 8px;
-  border-radius: 8px;
-  margin-bottom: 6px;
-  max-width: 75%;
-}
-
+/* MESSAGES */
+.chat-messages { flex: 1; padding: 10px; overflow-y: auto; }
+.message { padding: 8px; border-radius: 8px; margin-bottom: 6px; max-width: 75%; }
 .message.user { background: #e3f2fd; margin-left: auto; }
 .message.helper { background: #e8f5e9; }
 
-.time { font-size: 11px; color: gray; }
+/* INPUT */
+.chat-input { display: flex; border-top: 1px solid #ccc; }
+.chat-input input { flex: 1; padding: 10px; border: none; }
+.chat-input button { padding: 10px; background: #1976d2; color: white; border: none; }
 
-.actions button {
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.chat-input {
-  display: flex;
-  border-top: 1px solid #ccc;
-}
-
-.chat-input input {
-  flex: 1;
-  padding: 10px;
-  border: none;
-}
-
-.chat-input button {
-  padding: 10px;
-  background: #1976d2;
-  color: white;
-  border: none;
-}
-
-.reaction-picker {
-  display: none;
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  padding: 6px 10px;
-  border-radius: 20px;
-}
-
+/* CALL SCREEN */
 .call-screen {
   position: fixed;
   inset: 0;
@@ -92,7 +49,11 @@ body {
   z-index: 999;
 }
 
-#remoteVideo { width: 100%; height: 100%; object-fit: cover; }
+#remoteVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 #localVideo {
   position: absolute;
