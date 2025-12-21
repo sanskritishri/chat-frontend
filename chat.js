@@ -1,179 +1,304 @@
-
 const token = sessionStorage.getItem("token");
 const myEmail = sessionStorage.getItem("email");
-const chatWith = sessionStorage.getItem("chatWith");
+const chatWith = sessionStorage.getItem("chatWith"); 
+// chatWith tum login ke baad set karoge
 
 if (!token || !chatWith) location.href = "login.html";
+
 document.getElementById("chatWith").innerText = chatWith;
 
-const socket = io("https://private-chat-ftj0.onrender.com", { auth: { token } });
+const socket = io("https://private-chat-ftj0.onrender.com", {
+  auth: { token }
+});
 
-// DOM Elements
+const typingDiv = document.getElementById("typingIndicator");
+let typingTimeout;
+
 const chatBox = document.getElementById("chatMessages");
 const input = document.getElementById("messageInput");
-const micBtn = document.getElementById("micBtn");
-const callScreen = document.getElementById("callScreen");
-const remoteVideo = document.getElementById("remoteVideo");
-const localVideo = document.getElementById("localVideo");
+const picker = document.getElementById("reactionPicker");
 
-// Voice Recording Logic
+const sendBtn = document.getElementById("sendBtn");
+
+sendBtn.addEventListener("click", sendMessage);
+
+
+let selectedMessageId = null;
+
+/* ENTER = SEND */
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") sendMessage();
+});
+
+input.addEventListener("input", () => {
+  socket.emit("typing", { to: chatWith });
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    socket.emit("stop_typing", { to: chatWith });
+  }, 800);
+});
+
+/* SEND MESSAGE */
+function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  const msg = {
+    id: Date.now(),
+    to: chatWith,
+    text,
+    time: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit"
+    }),
+    status: "sent" // sent | delivered | seen
+  };
+
+  renderMessage({ ...msg, from: myEmail }, true);
+  socket.emit("private_message", msg);
+  input.value = "";
+}
+
+/* RECEIVE MESSAGE */
+socket.on("private_message", msg => {
+  renderMessage({ ...msg, status: "delivered" }, false);
+
+  socket.on("voice_message", data => {
+  renderVoice(data.audio, false);
+});
+
+  // auto seen
+  socket.emit("seen", {
+    id: msg.id,
+    to: msg.from
+  });
+});
+
+// typing
+socket.on("typing", data => {
+  typingDiv.style.display = "block";
+  typingDiv.innerText = `${data.from} is typing...`;
+});
+
+socket.on("stop_typing", () => {
+  typingDiv.style.display = "none";
+});
+
+socket.on("connect", () => {
+  // 🔥 ask server: is chatWith online?
+  socket.emit("check_status", { email: chatWith });
+});
+
+
+/* RENDER MESSAGE */
+function renderMessage(msg, isMe) {
+  const div = document.createElement("div");
+  div.className = `message ${isMe ? "user" : "helper"}`;
+  div.dataset.id = msg.id;
+
+  div.innerHTML = `
+    <div class="text">
+      ${isMe ? msg.text : `<b>${msg.from}</b>: ${msg.text}`}
+    </div>
+    <span class="time">
+      ${msg.time} ${isMe ? getTick(msg.status) : ""}
+    </span>
+
+    ${isMe ? `
+    <div class="actions">
+      <button onclick="editMessage(${msg.id})">✏️</button>
+      <button onclick="deleteMessage(${msg.id})">🗑️</button>
+    </div>` : ""}
+  `;
+
+
 let mediaRecorder;
 let audioChunks = [];
 
+const micBtn = document.getElementById("micBtn");
+
+
 micBtn.addEventListener("click", async () => {
+  try {
+    // START recording
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-        
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
-            reader.onloadend = () => {
-                const base64Audio = reader.result;
-                sendVoiceNote(base64Audio);
-            };
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+          socket.emit("voice_message", {
+            to: chatWith,
+            audio: reader.result
+          });
+
+          renderVoice(reader.result, true);
         };
 
-        mediaRecorder.start();
-        micBtn.classList.add("recording");
-    } else {
-        mediaRecorder.stop();
-        micBtn.classList.remove("recording");
+        reader.readAsDataURL(audioBlob);
+      };
+
+      mediaRecorder.start();
+      micBtn.classList.add("recording");
     }
+    // STOP recording
+    else {
+      mediaRecorder.stop();
+      micBtn.classList.remove("recording");
+    }
+  } catch (err) {
+    alert("Microphone permission denied");
+  }
 });
+  
 
-function sendVoiceNote(audioData) {
-    const msg = { to: chatWith, voice: audioData, id: Date.now(), time: getTime() };
-    socket.emit("private_message", msg);
-    renderMessage({ ...msg, from: myEmail }, true);
-}
 
-// WebRTC Configuration
-const servers = {
-    iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        {
-            urls: "turn:global.relay.metered.ca:443",
-            username: "bd2d8f73bf3c57aa2fb0412c",
-            credential: "q7brVVwZ58q5E4B"
-        }
-    ]
+
+
+  // long press → emoji
+ // LONG PRESS (MOBILE + DESKTOP)
+let pressTimer;
+
+const startPress = () => {
+  pressTimer = setTimeout(() => {
+    selectedMessageId = msg.id;
+    picker.style.display = "block";
+  }, 600);
 };
 
-let localStream;
-let peerConnection;
-let callType = "audio";
-
-async function startCall(type) {
-    callType = type;
-    callScreen.style.display = "flex";
-    document.getElementById("callingText").innerText = `Calling ${chatWith}... (${type})`;
-
-    localStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: type === "video"
-    });
-
-    if (type === "video") {
-        localVideo.style.display = "block";
-        localVideo.srcObject = localStream;
-    } else {
-        localVideo.style.display = "none";
-    }
-
-    peerConnection = new RTCPeerConnection(servers);
-    localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
-
-    peerConnection.ontrack = e => {
-        remoteVideo.srcObject = e.streams[0];
-    };
-
-    peerConnection.onicecandidate = e => {
-        if (e.candidate) socket.emit("webrtc_ice", { to: chatWith, candidate: e.candidate });
-    };
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit("webrtc_offer", { to: chatWith, offer, callType: type });
-}
-
-socket.on("webrtc_offer", async data => {
-    const accept = confirm(`Incoming ${data.callType} call from ${data.from}`);
-    if (!accept) return socket.emit("call_rejected", { to: data.from });
-
-    callType = data.callType;
-    callScreen.style.display = "flex";
-    
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callType === "video" });
-    if (callType === "video") localVideo.srcObject = localStream;
-
-    peerConnection = new RTCPeerConnection(servers);
-    localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
-    peerConnection.ontrack = e => remoteVideo.srcObject = e.streams[0];
-    
-    await peerConnection.setRemoteDescription(data.offer);
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    socket.emit("webrtc_answer", { to: data.from, answer });
-});
-
-socket.on("webrtc_answer", d => peerConnection.setRemoteDescription(d.answer));
-socket.on("webrtc_ice", d => peerConnection && peerConnection.addIceCandidate(d.candidate));
-
-// UI Helpers
-function getTime() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
-
-function renderMessage(msg, isMe) {
-    const div = document.createElement("div");
-    div.className = `message ${isMe ? "user" : "helper"}`;
-    div.dataset.id = msg.id;
-
-    let content = msg.text ? `<div class="text">${msg.text}</div>` : 
-                  `<audio controls src="${msg.voice}"></audio>`;
-
-    div.innerHTML = `
-        ${content}
-        <div class="time-row">
-            <span>${msg.time}</span>
-            ${isMe ? '<span class="seen-tick">✔✔</span>' : ''}
-        </div>
-    `;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// Call Buttons
-document.getElementById("audioCallBtn").onclick = () => startCall("audio");
-document.getElementById("videoCallBtn").onclick = () => startCall("video");
-document.getElementById("endCallBtn").onclick = () => {
-    if(peerConnection) peerConnection.close();
-    if(localStream) localStream.getTracks().forEach(t => t.stop());
-    callScreen.style.display = "none";
-    socket.emit("call_end", { to: chatWith });
+const endPress = () => {
+  clearTimeout(pressTimer);
 };
 
-// Messaging
-document.getElementById("sendBtn").onclick = sendMessage;
-function sendMessage() {
-    const text = input.value.trim();
-    if(!text) return;
-    const msg = { to: chatWith, text, id: Date.now(), time: getTime() };
-    socket.emit("private_message", msg);
-    renderMessage({ ...msg, from: myEmail }, true);
-    input.value = "";
+// Desktop
+div.addEventListener("mousedown", startPress);
+div.addEventListener("mouseup", endPress);
+div.addEventListener("mouseleave", endPress);
+
+// Mobile
+div.addEventListener("touchstart", startPress);
+div.addEventListener("touchend", endPress);
+div.addEventListener("touchcancel", endPress);
+
+/* SEEN */
+socket.on("seen", data => {
+  const tick = document.querySelector(
+    `[data-id='${data.id}'] .time`
+  );
+  if (tick) tick.innerHTML += " ✔✔";
+});
+
+/* EDIT */
+function editMessage(id) {
+  const newText = prompt("Edit message");
+  if (!newText) return;
+
+  const div = document.querySelector(`[data-id='${id}'] .text`);
+  if (div) div.innerText = newText;
+
+  socket.emit("edit_message", {
+    id,
+    to: chatWith,
+    text: newText
+  });
 }
 
-socket.on("private_message", msg => renderMessage(msg, false));
+socket.on("edit_message", data => {
+  const div = document.querySelector(`[data-id='${data.id}'] .text`);
+  if (div) div.innerText = data.text;
+});
 
+/* DELETE */
+function deleteMessage(id) {
+  if (!confirm("Delete message?")) return;
 
+  document.querySelector(`[data-id='${id}']`)?.remove();
 
+  socket.emit("delete_message", {
+    id,
+    to: chatWith
+  });
+}
 
+socket.on("delete_message", data => {
+  document.querySelector(`[data-id='${data.id}']`)?.remove();
+});
 
+  function renderVoice(audioSrc, isMe) {
+  const div = document.createElement("div");
+  div.className = `message ${isMe ? "user" : "helper"}`;
 
+  div.innerHTML = `
+    <audio controls src="${audioSrc}"></audio>
+  `;
 
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 
+/* EMOJI */
+function sendReaction(emoji) {
+  if (!selectedMessageId) return;
 
+  const div = document.querySelector(`[data-id='${selectedMessageId}']`);
+  if (div) div.innerHTML += `<div class="reactions">${emoji}</div>`;
 
+  socket.emit("reaction", {
+    id: selectedMessageId,
+    to: chatWith,
+    emoji
+  });
+
+  picker.style.display = "none";
+  selectedMessageId = null;
+}
+
+socket.on("reaction", data => {
+  const div = document.querySelector(`[data-id='${data.id}']`);
+  if (div) div.innerHTML += `<div class="reactions">${data.emoji}</div>`;
+});
+
+/* TICKS */
+function getTick(status) {
+  if (status === "sent") return "✔";
+  if (status === "delivered") return "✔✔";
+  if (status === "seen") return "✔✔";
+  return "";
+}
+
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+
+socket.on("status_result", data => {
+  if (data.email === chatWith) {
+    if (data.status === "online") {
+      statusDot.className = "dot online";
+      statusText.innerText = "Online";
+    } else {
+      statusDot.className = "dot offline";
+      statusText.innerText = "Offline";
+    }
+  }
+});
+
+socket.on("user_status", data => {
+  if (data.email === chatWith) {
+    if (data.status === "online") {
+      statusDot.className = "dot online";
+      statusText.innerText = "Online";
+    } else {
+      statusDot.className = "dot offline";
+      statusText.innerText = "Offline";
+    }
+  }
+});
