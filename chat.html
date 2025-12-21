@@ -1,62 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Private Chat</title>
-
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Private Chat Pro</title>
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 
-<div class="chat-container">
 
-  <!-- HEADER -->
+<div class="chat-container">
   <div class="chat-header">
-    <span>Private Chat</span>
-    <div class="call-buttons">
+    <div class="user-info">
+      <span id="chatWith"></span>
+      <div class="status-wrapper">
+        <span id="statusDot" class="dot offline"></span>
+        <span id="statusText">Offline</span>
+      </div>
+    </div>
+    <div class="header-btns">
       <button id="audioCallBtn">📞</button>
       <button id="videoCallBtn">📹</button>
     </div>
   </div>
 
-  <!-- STATUS -->
-  <div class="user-status">
-    <span id="statusDot" class="dot offline"></span>
-    <span id="statusText">Offline</span>
-  </div>
-
-  <div class="chat-user">
-    Chatting with: <span id="chatWith"></span>
-  </div>
-
-  <!-- CALL SCREEN -->
   <div id="callScreen" class="call-screen" style="display:none;">
+    <div class="call-info">
+      <h2 id="callingText">Calling...</h2>
+      <p id="callDuration">00:00</p>
+    </div>
     <video id="remoteVideo" autoplay playsinline></video>
     <video id="localVideo" autoplay muted playsinline class="local-video"></video>
 
     <div class="call-controls">
-      <button id="muteBtn">🔕</button>
-      <button id="endCallBtn">❌</button>
+      <button id="muteBtn" class="control-btn">🔕</button>
+      <button id="endCallBtn" class="control-btn hangup">❌</button>
     </div>
   </div>
 
-  <!-- MESSAGES -->
-  <div id="chatMessages" class="chat-messages"></div>
-
-  <div id="typingIndicator" class="typing-indicator" style="display:none;">
-    typing...
+  <div id="reactionPicker" class="reaction-picker">
+    <span onclick="sendReaction('👍')">👍</span>
+    <span onclick="sendReaction('❤️')">❤️</span>
+    <span onclick="sendReaction('😂')">😂</span>
+    <span onclick="sendReaction('😮')">😮</span>
+    <span onclick="sendReaction('😢')">😢</span>
   </div>
 
-  <!-- INPUT -->
+  <div id="chatMessages" class="chat-messages"></div>
+  <div id="typingIndicator" class="typing-indicator" style="display:none;">typing...</div>
+
   <div class="chat-input">
+    <button id="micBtn">🎤</button>
     <input id="messageInput" placeholder="Type your message...">
     <button id="sendBtn">Send</button>
   </div>
-
 </div>
 
 <script src="chat.js"></script>
 </body>
 </html>
+
+
