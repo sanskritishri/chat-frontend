@@ -202,8 +202,32 @@ let callType = "audio";
 let muted = false;
 
 const servers = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  iceServers: [
+    { urls: "stun:stun.relay.metered.ca:80" },
+
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "bd2d8f73bf3c57aa2fb0412c",
+      credential: "q7brVVwZ58q5E4B"
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "bd2d8f73bf3c57aa2fb0412c",
+      credential: "q7brVVwZ58q5E4B"
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "bd2d8f73bf3c57aa2fb0412c",
+      credential: "q7brVVwZ58q5E4B"
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "bd2d8f73bf3c57aa2fb0412c",
+      credential: "q7brVVwZ58q5E4B"
+    }
+  ]
 };
+
 
 audioCallBtn.addEventListener("click", () => {
   callType = "audio";
@@ -367,4 +391,5 @@ endCallBtn.addEventListener("click", () => {
 socket.on("call_ended", () => {
   endCallBtn.click();
 });
+
 
