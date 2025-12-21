@@ -104,8 +104,8 @@ const servers = {
         "turn:global.relay.metered.ca:443",
         "turn:global.relay.metered.ca:443?transport=tcp"
       ],
-      username: "PASTE_METERED_USERNAME",
-      credential: "PASTE_METERED_PASSWORD"
+      username: "bd2d8f73bf3c57aa2fb0412c",
+      credential: "q7brVYvWZS8q5E4B"
     }
   ]
 };
@@ -210,3 +210,4 @@ endCallBtn.onclick = () => {
 socket.on("call_ended", () => {
   endCallBtn.click();
 });
+
