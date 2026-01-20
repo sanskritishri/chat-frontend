@@ -37,11 +37,14 @@
 </div>
 
 <!-- CALL SCREEN -->
-<div id="callScreen">
+<div id="callScreen" class="call-screen" style="display:none;">
   <video id="remoteVideo" autoplay playsinline></video>
   <video id="localVideo" autoplay muted playsinline></video>
-  <button id="muteBtn">🔕</button>
-  <button onclick="endCall()">❌ End</button>
+
+  <div class="call-controls">
+    <button id="muteBtn">🔕</button>
+    <button id="endCallBtn">❌</button>
+  </div>
 </div>
 
 <script src="chat.js"></script>
